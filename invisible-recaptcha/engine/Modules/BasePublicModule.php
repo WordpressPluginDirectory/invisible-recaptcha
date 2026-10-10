@@ -28,13 +28,14 @@ class BasePublicModule extends MchBasePublicModule
 	}
 
 
-	public function getReCaptchaHolderHtmlCode()
+	public function getReCaptchaHolderHtmlCode($before = '')
 	{
-		return '<div class="' . self::RECAPTCHA_HOLDER_CLASS_NAME . '"></div>';
+		return $before.'<div class="' . esc_attr(self::RECAPTCHA_HOLDER_CLASS_NAME) . '"></div>';
 	}
 
 	public function renderReCaptchaHolderHtmlCode()
 	{
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- returns HTML with escaping
 		echo $this->getReCaptchaHolderHtmlCode();
 	}
 

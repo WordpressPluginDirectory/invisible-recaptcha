@@ -8,7 +8,8 @@ use InvisibleReCaptcha\RequestHandler;
 
 class WordPressPublicModule extends BasePublicModule
 {
-	private $commentValidationHookIndex = null;
+	private $commentValidationHookIndex = null, $passedLoginReCaptchaOnCurrentRequest = false;
+	private $loginFormHookIndex = null, $loginAuthenticateFilterHookIndex = null;
 	private $arrRegistrationHooksIndex = array();
 
 
@@ -29,6 +30,8 @@ class WordPressPublicModule extends BasePublicModule
 		{
 
 			$this->loginFormHookIndex = $this->addActionHook('login_form', array($this, 'renderReCaptchaHolderHtmlCode'));
+			
+			$this->addFilterHook('login_form_bottom', array($this, 'getReCaptchaHolderHtmlCode'));
 
 			$this->addFilterHook('wp_authenticate_user',  array($this, 'validateLoginUserAuthentication'), 25, 2);
 
@@ -84,6 +87,7 @@ class WordPressPublicModule extends BasePublicModule
 	public function validateRegisterMultiSiteRequest($results)
 	{
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- just checking stage
 		if (isset($_POST['stage']) && 'validate-blog-signup' == $_POST['stage'])
 			return $results;
 
@@ -92,7 +96,7 @@ class WordPressPublicModule extends BasePublicModule
 
 		empty($results['errors']) || !is_wp_error($results['errors']) ? $results['errors'] = new \WP_Error() : null;
 
-		$results['errors']->add('invalid-token', __('Registration Error!', \InvisibleReCaptcha::PLUGIN_SLUG));
+		$results['errors']->add('invalid-token', __('Registration Error!', 'invisible-recaptcha'));
 
 		return $results;
 	}
@@ -104,7 +108,7 @@ class WordPressPublicModule extends BasePublicModule
 
 		!is_wp_error($wpError) ? $wpError = new \WP_Error() : null;
 
-		$wpError->add('gdbc-invalid-token', __('Registration Error!', \InvisibleReCaptcha::PLUGIN_SLUG));
+		$wpError->add('gdbc-invalid-token', __('Registration Error!', 'invisible-recaptcha'));
 
 		return $wpError;
 	}
@@ -139,14 +143,39 @@ class WordPressPublicModule extends BasePublicModule
 
 		if(!function_exists('login_header')) // not wp-login page
 			return $wpUser;
-
-		return BasePublicModule::isRecaptchaValid()
+			
+		$userId = ($wpUser instanceof \WP_User) ? $wpUser->ID : 0;
+		$isValid = $this->maybeValidateBypassLoginRecaptchaHash($userId) || BasePublicModule::isRecaptchaValid();
+		$this->passedLoginReCaptchaOnCurrentRequest = ($isValid && $userId) ? $userId : false;
+		
+		return $isValid
 				? $wpUser
-				: new \WP_Error(\InvisibleReCaptcha::PLUGIN_SLUG,  __('Invalid username or incorrect password!', \InvisibleReCaptcha::PLUGIN_SLUG));
+				: new \WP_Error(\InvisibleReCaptcha::PLUGIN_SLUG,  __('Invalid username or incorrect password!', 'invisible-recaptcha'));
 
 	}
-
-
+	
+	public function getReCaptchaHolderHtmlCode($before = '')
+	{
+		if ($this->passedLoginReCaptchaOnCurrentRequest !== false) {
+			return sprintf('%s<input type="hidden" name="invisible-recaptcha-bypass" value="%s">', $before, esc_attr($this->getBypassLoginRecaptchaHash($this->passedLoginReCaptchaOnCurrentRequest)));
+		}
+		return parent::getReCaptchaHolderHtmlCode($before);
+	}
+	
+	private function getBypassLoginRecaptchaHash($userId)
+	{
+		return wp_hash('invisible_recaptcha_bypass_'.$userId.floor(time() / 3600));
+	}
+	
+	private function maybeValidateBypassLoginRecaptchaHash($userId)
+	{
+		if (empty($_POST['invisible-recaptcha-bypass']) || !$userId) {
+			return false;
+		}
+		$hash = sanitize_text_field(wp_unslash($_POST['invisible-recaptcha-bypass']));
+		return hash_equals($hash, wp_hash('invisible_recaptcha_bypass_'.$userId.floor(time() / 3600)))
+				|| hash_equals($hash, wp_hash('invisible_recaptcha_bypass_'.$userId.(floor(time() / 3600) - 1)));
+	}
 
 	public function filterCommentsSubmit($submitButtonCode)
 	{
@@ -161,7 +190,7 @@ class WordPressPublicModule extends BasePublicModule
 		$arrWordPressCommentsType = array('pingback' => 1, 'trackback' => 1);
 
 		if( (!empty($arrComment['comment_type']) && isset($arrWordPressCommentsType[strtolower($arrComment['comment_type'])]) ) ) {
-			wp_die( '<p>' . __( 'Link Notifications are disabled!', 'invisible-recaptcha' ) . '</p>', __( 'Comment Submission Failure' ), array( 'response' => 200 ) );
+			wp_die( '<p>' . esc_html__( 'Link Notifications are disabled!', 'invisible-recaptcha' ) . '</p>', esc_html__( 'Comment Submission Failure', 'invisible-recaptcha' ), array( 'response' => 200 ) );
 		}
 
 		$arrComment['comment_post_ID'] = (!empty($arrComment['comment_post_ID']) && is_numeric($arrComment['comment_post_ID'])) ? (int)$arrComment['comment_post_ID'] : 0;

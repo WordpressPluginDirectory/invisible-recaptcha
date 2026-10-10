@@ -1,18 +1,28 @@
-=== Invisible reCaptcha for WordPress===
-Contributors: mihche
-Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=XVC3TSGEJQP2U
-Tags: invisible reCaptcha, woocommerce invisible reCaptcha, contact form 7 invisible reCaptcha
-Requires at least: 4.0
-Tested up to: 5.4
-Stable tag: 1.2.3
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+=== Invisible reCaptcha ===
+Contributors: berrypressjonhall, berrypress
+Tags: recaptcha, woocommerce recaptcha, register recaptcha, contact form 7 recaptcha, captcha
+Requires at least: 4.5
+Requires PHP: 7.1
+Tested up to: 7.1
+Stable tag: 1.3.2
+License: GPLv3 or later
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Invisible reCaptcha for WordPress plugin helps you to protect your sites against bad spam bots using the new Invisible reCaptcha by Google.
+Use reCaptcha v2 by Google to combat spam at your login and registration forms, WooCommerce account forms, contact forms, and more!
 
 == Description ==
 
 Invisible reCaptcha for WordPress is an extremely powerful plugin which integrates the new [Invisible reCaptcha by Google](https://www.google.com/recaptcha/intro/invisible.html) with your WordPress site.
+
+**Notice:** As of version 1.3.0, this plugin is now maintained by [@berrypress](https://profiles.wordpress.org/berrypress/).
+
+= External service disclosure =
+
+This plugin is designed to integrate [reCAPTCHA by Google](https://cloud.google.com/security/products/recaptcha) into your site, which is an external third-party service used to implement security and fraud prevention measures. The plugin may communicate with the reCAPTCHA service via API and/or by loading assets on your site's frontend, resulting in data transfer with the reCAPTCHA service when the site frontend is accessed and/or when reCAPTCHA validation is triggered by to user actions. In addition to authentication and operational data such as API keys and reCAPTCHA identifiers, the service may receive information from your and your users' browser and network, such as their IP address, user agent, etc.
+
+Use of the reCAPTCHA service is subject to the [Google Cloud Terms of Service](https://cloud.google.com/terms), [Service Specific Terms](https://cloud.google.com/terms/service-term), [Google Privacy Policy](https://policies.google.com/privacy), and the [Cloud Data Processing Addendum](https://cloud.google.com/terms/data-processing-addendum).
+
+This plugin is not affiliated with or endorsed by Google.
 
 = Summary of features =
 
@@ -47,9 +57,17 @@ Invisible reCaptcha for WordPress is an extremely powerful plugin which integrat
 = Compatibility =
 On a **WP Multisite** you can either activate the plugin network wide or on a single site.
 
-= How-To and Troubleshooting =
-Check out our [Invisible reCaptcha for WordPress Support Forum](https://ultracommunity.com/forums/forum/invisible-recaptcha/)
+= How-To =
 
+Check out the Invisible reCAPTCHA v2 Guide: [https://developers.google.com/recaptcha/docs/invisible](https://developers.google.com/recaptcha/docs/invisible)
+
+1. Create a reCAPTCHA v2 site using the Invisible reCAPTCHA badge option: [https://www.google.com/recaptcha/admin/create](https://www.google.com/recaptcha/admin/create)
+2. Copy the Site Key and Secret Key from the Google reCAPTCHA admin console.
+3. In WordPress, go to Settings > Invisible reCaptcha > Settings.
+4. Enter your Site Key and Secret Key.
+5. Save the settings.
+6. In the settings, choose which forms should be protected by reCAPTCHA.
+7. Visit a page containing a protected form and verify that the reCAPTCHA badge is displayed and that form submissions are working correctly.
 
 = Extending Invisible reCaptcha =
 Here are some useful hooks to help developers integrate Invisible reCaptcha with any plugin or custom form
@@ -64,6 +82,13 @@ Here are some useful hooks to help developers integrate Invisible reCaptcha with
 - google_invre_widget_output_html_filter - used to change the recaptcha widget output
 - google_invre_language_code_filter      - used to change the badge/challenge language code
 - google_invre_badge_position_filter     - used to change the badge position (possible returning values are: 'bottomright', 'bottomleft', 'inline')
+- google_invre_ajax_submit_classnames    - used to change the CSS class names of submit buttons that trigger reCaptcha on AJAX forms (default: array('wpcf7-submit', 'invisible-recaptcha-do-submit'))
+- google_invre_is_gf_excluded            - used to exclude a Gravity Forms form from protection (receives bool $is_excluded and int $form_id)
+`
+
+**Constants** (wp-config.php)
+`
+- INVISIBLE_RECAPTCHA_OVERRIDE - define as true to treat every request as valid (e.g. automated tests, staging) or as false to treat every request as invalid. Leave undefined for normal behavior.
 `
 > **Examples of using  Invisible reCaptcha hooks**
 
@@ -99,9 +124,47 @@ function myprefix_change_recaptcha_language($language_code){
 See all [reCaptcha Language Codes](https://developers.google.com/recaptcha/docs/language)
 
 
-> **Note: This plugin requires PHP 5.3 or higher to be activated.**
+> **Note: This plugin requires PHP 7.1 or higher to be activated.**
+
+== Upgrade Notice ==
+
+= 1.3.2 =
+* Requires PHP 7.1 or newer. Fixes the conflict with two-factor authentication plugins, adds support for wp_login_form(), and fixes several issues with Contact Form 7, Gravity Forms and WooCommerce.
+
+= 1.3.1 =
+* Maintenance release requiring PHP 7.0 or newer, updating WordPress compatibility metadata, external service disclosure, and setup documentation while removing inactive code.
+
+= 1.3.0 =
+* In accordance with current best practices, the custom CSS feature is no longer supported in this plugin. Before updating to v1.3.0+, make a copy of any custom CSS you have defined in Invisible Recaptcha settings, and use a different method to load it on the frontend of your site.
 
 == Changelog ==
+
+= 1.3.2 =
+* Fixed conflict with two-factor authentication plugins (Wordfence, Two Factor and others): the second step of the login no longer requires a new reCAPTCHA token. A short-lived hash tied to the user is issued once reCAPTCHA has passed.
+* Added support for `wp_login_form()` via the `login_form_bottom` filter.
+* Added the `INVISIBLE_RECAPTCHA_OVERRIDE` constant to force the validation result from wp-config.php.
+* Added the `google_invre_ajax_submit_classnames` filter to customize the submit button class names used for AJAX forms.
+* Contact Form 7 and Gravity Forms: reCAPTCHA is now placed at the bottom of the form, and an existing spam verdict is no longer overridden by a valid token.
+* WooCommerce: earlier validation errors on login, registration and password reset are no longer overridden.
+* Fixed the reCAPTCHA widget being rendered for the wrong form when forms are nested.
+* Fixed a fatal error (infinite recursion) when Contact Form 7 protection was enabled.
+* Fixed `Undefined property: WP_Error::$ID` warnings when a login was rejected.
+* PHP 8.x: removed the `spl_autoload_register()` deprecation notices and the dynamic property deprecations.
+* Fixed a possible TypeError on the settings page when no page object is available.
+* Minimum supported PHP version is now 7.1.
+* Updated "Tested up to" to WordPress 7.1.
+
+= 1.3.1 =
+* Removed inactive WooCommerce checkout protection code ([commit details](https://github.com/BerryPress/invisible-recaptcha/commit/0e520ef3b74d7a413a44ee69f45c14532209b622)).
+* Removed unused licensing and external module-loading infrastructure.
+* Declared PHP 7.0 as the minimum supported PHP version.
+* Updated WordPress compatibility metadata.
+* Added a link to the Google Privacy Policy to the external service disclosure.
+* Corrected the setup documentation to specify Invisible reCAPTCHA v2.
+
+= 1.3.0 =
+* PHP 8 compatibility
+* Removed the custom CSS feature
 
 = 1.2.3 =
 * Fixed class not found issue [Problem with AJAX after update](https://wordpress.org/support/topic/problem-with-ajax-after-update/)
@@ -155,4 +218,3 @@ See all [reCaptcha Language Codes](https://developers.google.com/recaptcha/docs/
 
 = 1.0 =
 * Initial release
-

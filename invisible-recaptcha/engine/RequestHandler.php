@@ -2,6 +2,8 @@
 
 namespace InvisibleReCaptcha;
 
+defined('ABSPATH') || exit;
+
 use InvisibleReCaptcha\Controllers\ModulesController;
 use InvisibleReCaptcha\MchLib\Utils\MchHttpRequest;
 use InvisibleReCaptcha\MchLib\Utils\MchWpUtils;
@@ -14,7 +16,7 @@ class RequestHandler
 	{
 		
 
-		MchWpUtils::addActionHook('plugins_loaded', function(){
+		MchWpUtils::addActionHook('init', function(){
 			
 			ModulesController::initializeAvailableModules();
 			
@@ -31,17 +33,22 @@ class RequestHandler
 
 	public static function isInvisibleReCaptchaTokenValid()
 	{
+		if (defined('INVISIBLE_RECAPTCHA_OVERRIDE') && is_bool(INVISIBLE_RECAPTCHA_OVERRIDE)) {
+			return INVISIBLE_RECAPTCHA_OVERRIDE;
+		}
 
 		static $requestIsValid = -1;
 		if(-1 !== $requestIsValid)
 			return $requestIsValid;
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- just checking field presence
 		if(empty($_POST['g-recaptcha-response']))
 			return false;
 
 		$response = wp_remote_retrieve_body(wp_remote_get( add_query_arg( array(
 			'secret'   => SettingsPublicModule::getInstance()->getOption(SettingsAdminModule::OPTION_SECRET_KEY),
-			'response' => $_POST['g-recaptcha-response'],
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- validating captcha; non-persistent
+			'response' => sanitize_text_field(wp_unslash($_POST['g-recaptcha-response'])),
 			'remoteip' => MchHttpRequest::getClientIp()
 		), 'https://www.google.com/recaptcha/api/siteverify' ) ));
 
@@ -81,4 +88,4 @@ spl_autoload_register(function($className){
 
 
 
-}, false, true);
+});
